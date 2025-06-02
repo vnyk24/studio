@@ -5,36 +5,52 @@ import { auth } from './firebase'; // auth instance from firebase.ts
 
 const createFirebaseError = (message: string, originalError?: any): Error => {
   let detailedMessage = message;
-  if (originalError && originalError.message) {
-    detailedMessage += ` Details: ${originalError.message}`;
+  if (originalError) {
+    if (originalError.message) {
+      detailedMessage += ` Details: ${originalError.message}`;
+    }
+    if (originalError.code) {
+      detailedMessage += ` (Code: ${originalError.code})`;
+    }
+    // Log the original error object itself for more context
+    console.error("Original Firebase Error Object:", originalError);
   }
-  if (originalError && originalError.code) {
-    detailedMessage += ` (Code: ${originalError.code})`;
-  }
-  console.error(detailedMessage, originalError || ''); // Log detailed error for developers
-  // Return a more generic error for UI, but include key info if helpful
+  console.error(detailedMessage, originalError || ''); // Log detailed message for developers
   return new Error(`Firebase operation failed. Please check your setup or try again. ${originalError?.code ? `(${originalError.code})` : ''}`);
 };
 
 const getGoogleProvider = (): AuthProvider | null => {
-  // Provider can be created even if auth is null, but operations will fail.
-  // It's better to check auth before attempting operations.
-  return new GoogleAuthProvider();
+  try {
+    return new GoogleAuthProvider();
+  } catch (e) {
+    console.error("Failed to create GoogleAuthProvider:", e);
+    return null;
+  }
 };
 
 export const signInWithGoogle = async (): Promise<User> => {
+  console.log("signInWithGoogle: Attempting Google sign-in. Current auth object state:", auth);
+
   if (!auth) {
+    console.error("signInWithGoogle: Firebase Auth object is null or undefined. Throwing error.");
     throw createFirebaseError("Firebase Auth is not initialized. Cannot sign in. Check your Firebase configuration and .env.local file.");
   }
+
   const provider = getGoogleProvider();
+  console.log("signInWithGoogle: Google Auth Provider object state:", provider);
+
   if (!provider) {
-     // This case should ideally not be reached if GoogleAuthProvider itself is always constructible.
+     console.error("signInWithGoogle: Google Auth Provider is null or undefined. Throwing error.");
      throw createFirebaseError("Failed to initialize Google Auth provider. Cannot sign in.");
   }
+
   try {
+    console.log("signInWithGoogle: Calling signInWithPopup with auth and provider.");
     const result = await signInWithPopup(auth, provider);
+    console.log("signInWithGoogle: signInWithPopup successful. User:", result.user);
     return result.user;
   } catch (error: any) {
+    console.error("signInWithGoogle: signInWithPopup failed. Error:", error);
     throw createFirebaseError("Google Sign-In Failed.", error);
   }
 };
@@ -44,7 +60,7 @@ export const signUpWithGoogle = signInWithGoogle;
 
 export const signOutUser = async (): Promise<void> => {
   if (!auth) {
-    console.warn("Firebase Auth is not initialized. Cannot sign out. User might not be signed in or Firebase is not configured.");
+    console.warn("signOutUser: Firebase Auth is not initialized. Cannot sign out. User might not be signed in or Firebase is not configured.");
     return; // Gracefully do nothing if auth isn't available
   }
   try {
@@ -57,17 +73,15 @@ export const signOutUser = async (): Promise<void> => {
 // Wrapper for onAuthStateChanged to be used in client components
 export const onAuthStateChanged = (callback: (user: User | null) => void): (() => void) => {
   if (!auth) {
-    console.warn("Firebase Auth is not initialized. Auth state listener will not be active. Assuming no user is signed in.");
-    // Call callback with null to ensure UI reflects no user state if auth isn't ready
+    console.warn("onAuthStateChanged: Firebase Auth is not initialized. Auth state listener will not be active. Assuming no user is signed in.");
     callback(null);
-    return () => {}; // Return a no-op unsubscribe function
+    return () => {}; 
   }
   try {
     return firebaseOnAuthStateChanged(auth, callback);
   } catch (error: any) {
     console.error("Error setting up onAuthStateChanged listener:", error);
-    // Call callback with null in case of error during setup
     callback(null);
-    return () => {}; // Return a no-op unsubscribe function
+    return () => {};
   }
 };
