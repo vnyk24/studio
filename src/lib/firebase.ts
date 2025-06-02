@@ -2,7 +2,17 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { Auth, getAuth, browserLocalPersistence, initializeAuth, indexedDBLocalPersistence, inMemoryPersistence } from 'firebase/auth';
 
-const firebaseConfig = {
+// It's good practice to explicitly type the config structure.
+interface FirebaseConfig {
+  apiKey?: string;
+  authDomain?: string;
+  projectId?: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId?: string;
+}
+
+const firebaseConfig: FirebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -14,8 +24,9 @@ const firebaseConfig = {
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 
-// Only attempt to initialize if the API key and Project ID are present
-if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+const essentialVarsPresent = firebaseConfig.apiKey && firebaseConfig.projectId;
+
+if (essentialVarsPresent) {
   if (!getApps().length) {
     try {
       app = initializeApp(firebaseConfig);
@@ -31,7 +42,6 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     if (typeof window !== 'undefined') {
       // Client-side: use initializeAuth for persistence options
       try {
-        // Attempt with indexedDB first, then local, then inMemory as fallbacks
         auth = initializeAuth(app, {
           persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence]
         });
@@ -54,16 +64,38 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     }
   }
 } else {
-  if (!firebaseConfig.apiKey) {
+  const missingVars: string[] = [];
+  if (!firebaseConfig.apiKey) missingVars.push("NEXT_PUBLIC_FIREBASE_API_KEY");
+  if (!firebaseConfig.projectId) missingVars.push("NEXT_PUBLIC_FIREBASE_PROJECT_ID");
+
+  if (missingVars.length > 0) {
     console.warn(
-      "Firebase API Key (NEXT_PUBLIC_FIREBASE_API_KEY) is missing. Firebase will not be initialized. " +
-      "Please ensure it is set in your .env.local file and the Next.js development server is restarted."
+      `Firebase Initialization SKIPPED. The following critical environment variable(s) are missing: ${missingVars.join(', ')}. ` +
+      "Please ensure they are set in your .env.local file and the Next.js development server is restarted. " +
+      "Firebase features, including Authentication, will not work."
     );
   }
-  if (!firebaseConfig.projectId) {
+}
+
+// Final check and warnings after all initialization attempts
+if (!auth) {
+  if (essentialVarsPresent) {
+    // This case is more serious: vars were there, but auth still failed.
+    console.error(
+      "CRITICAL Firebase Auth Initialization Failure: The 'auth' object is null even though Firebase config variables " +
+      "(API Key, Project ID) appear to be present. This indicates a deeper issue with Firebase setup or SDK initialization. " +
+      "Authentication WILL NOT WORK. Please check: \n" +
+      "1. Your Firebase project settings in the Firebase console (is the project active? are the credentials correct?).\n" +
+      "2. Network connectivity to Firebase services from your environment.\n" +
+      "3. Any console errors logged above this message from the Firebase SDKs during initialization attempts.\n" +
+      "4. Ensure you've enabled necessary Sign-in providers (e.g., Google) in the Firebase Authentication console.\n" +
+      "5. Double-check that your .env.local file is correctly formatted and saved, and that you've RESTARTED your Next.js development server after any changes to it."
+    );
+  } else {
+    // This case means essential vars were missing from the start.
+    // The earlier warning already covered this, but an additional note here reinforces it.
     console.warn(
-      "Firebase Project ID (NEXT_PUBLIC_FIREBASE_PROJECT_ID) is missing. Firebase will not be initialized. " +
-      "Please ensure it is set in your .env.local file and the Next.js development server is restarted."
+        "Firebase Auth is not initialized because essential configuration variables (API Key, Project ID) are missing. Authentication will not work."
     );
   }
 }
