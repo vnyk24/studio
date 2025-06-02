@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogIn } from 'lucide-react';
+import { LogIn, Chrome } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
@@ -18,10 +19,18 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Placeholder for login logic
+    // Placeholder for email/password login logic
     toast({
       title: "Login Attempted",
-      description: "Login functionality is not yet implemented.",
+      description: "Email/Password login functionality is not yet implemented.",
+    });
+  };
+
+  const handleGoogleSignIn = () => {
+    // Placeholder for Google Sign-In logic
+    toast({
+      title: "Google Sign-In Attempted",
+      description: "Google Sign-In functionality is not yet implemented.",
     });
   };
 
@@ -62,13 +71,27 @@ export default function LoginPage() {
                 />
               </div>
               <Button type="submit" className="w-full">Log In</Button>
-              <p className="text-center text-sm text-muted-foreground">
-                Don't have an account?{' '}
-                <Link href="/signup" className="font-medium text-primary hover:underline">
-                  Sign up
-                </Link>
-              </p>
             </form>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+              <Chrome className="mr-2 h-4 w-4" />
+              Sign in with Google
+            </Button>
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Don't have an account?{' '}
+              <Link href="/signup" className="font-medium text-primary hover:underline">
+                Sign up
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </main>
