@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Button } from "@/components/ui/button";
@@ -11,27 +12,48 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogIn, Chrome } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { signInWithGoogle } from '@/lib/auth'; // Updated import
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     // Placeholder for email/password login logic
     toast({
       title: "Login Attempted",
       description: "Email/Password login functionality is not yet implemented.",
+      variant: "default"
     });
+    setIsLoading(false);
   };
 
-  const handleGoogleSignIn = () => {
-    // Placeholder for Google Sign-In logic
-    toast({
-      title: "Google Sign-In Attempted",
-      description: "Google Sign-In functionality is not yet implemented.",
-    });
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const user = await signInWithGoogle();
+      if (user) {
+        toast({
+          title: "Signed In Successfully!",
+          description: `Welcome back, ${user.displayName || user.email}!`,
+        });
+        router.push('/'); // Redirect to homepage or dashboard
+      }
+    } catch (error: any) {
+      console.error("Google Sign-In Error:", error);
+      toast({
+        title: "Google Sign-In Failed",
+        description: error.message || "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -55,6 +77,7 @@ export default function LoginPage() {
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                   required 
+                  disabled={isLoading}
                   className="bg-input border-border focus:ring-primary"
                 />
               </div>
@@ -67,10 +90,13 @@ export default function LoginPage() {
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
                   required 
+                  disabled={isLoading}
                   className="bg-input border-border focus:ring-primary"
                 />
               </div>
-              <Button type="submit" className="w-full">Log In</Button>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Logging in...' : 'Log In'}
+              </Button>
             </form>
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
@@ -82,9 +108,9 @@ export default function LoginPage() {
                 </span>
               </div>
             </div>
-            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
               <Chrome className="mr-2 h-4 w-4" />
-              Sign in with Google
+              {isLoading ? 'Signing in...' : 'Sign in with Google'}
             </Button>
             <p className="mt-6 text-center text-sm text-muted-foreground">
               Don't have an account?{' '}
