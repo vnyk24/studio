@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Clapperboard, LogOut } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { User } from 'firebase/auth';
-import { onAuthStateChanged, signOutUser } from '@/lib/auth';
+// Use the User type for structural consistency, though it won't be a Firebase User object anymore
+import type { User } from 'firebase/auth'; 
+import { onAuthStateChanged, signOutUser } from '@/lib/auth'; // These are now placeholder functions
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -23,26 +24,33 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // With placeholder onAuthStateChanged, loading is less of an issue,
+  // but we keep the pattern for potential future async operations.
+  const [loading, setLoading] = useState(true); 
   const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
+    // onAuthStateChanged is now a placeholder that will immediately call back (likely with null)
     const unsubscribe = onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
+      setUser(currentUser); // currentUser will be null from placeholder
       setLoading(false);
     });
-    return () => unsubscribe(); // Cleanup subscription on unmount
+    return () => unsubscribe(); 
   }, []);
 
   const handleSignOut = async () => {
     try {
-      await signOutUser();
-      toast({ title: "Signed Out", description: "You have been successfully signed out." });
+      await signOutUser(); // Calls the placeholder signOutUser
+      toast({ title: "Signed Out", description: "You have been signed out (placeholder action)." });
+      // setUser(null); // Explicitly set user to null for UI update, as onAuthStateChanged might not re-trigger in placeholder
       router.push('/'); 
+      // To ensure UI updates immediately after placeholder logout, explicitly set user state
+      // This is because the placeholder onAuthStateChanged might not be "listening" for this change.
+      setUser(null);
     } catch (error) {
-      console.error("Error signing out: ", error);
-      toast({ title: "Sign Out Error", description: "Could not sign you out. Please try again.", variant: "destructive" });
+      console.error("Error signing out (placeholder): ", error);
+      toast({ title: "Sign Out Error", description: "Could not sign you out (placeholder action).", variant: "destructive" });
     }
   };
 
@@ -59,7 +67,7 @@ export default function Header() {
                 <Skeleton className="h-10 w-20" />
                 <Skeleton className="h-10 w-24" />
             </div>
-          ) : user ? (
+          ) : user ? ( // user will typically be null due to placeholder onAuthStateChanged
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
@@ -79,7 +87,6 @@ export default function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {/* <DropdownMenuItem onClick={() => router.push('/profile')}>Profile</DropdownMenuItem> */}
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>

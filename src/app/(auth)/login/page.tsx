@@ -10,11 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogIn, Chrome, AlertTriangle } from 'lucide-react';
+import { LogIn, Chrome } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithGoogle } from '@/lib/auth';
-import { auth } from '@/lib/firebase'; // Import auth
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+// Removed Alert related imports as Firebase specific alerts are removed
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -23,52 +22,34 @@ export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const isFirebaseConfigured = !!auth;
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFirebaseConfigured) {
-      toast({
-        title: "Firebase Not Configured",
-        description: "Please configure Firebase in .env.local and restart the server.",
-        variant: "destructive",
-      });
-      return;
-    }
     setIsLoading(true);
-    // Placeholder for email/password login logic
     toast({
       title: "Login Attempted",
-      description: "Email/Password login functionality is not yet implemented.",
+      description: "Email/Password login functionality is not yet implemented in this version.",
       variant: "default"
     });
     setIsLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
-    if (!isFirebaseConfigured) {
-      toast({
-        title: "Firebase Not Configured",
-        description: "Cannot sign in with Google. Please configure Firebase in .env.local and restart the server.",
-        variant: "destructive",
-      });
-      return;
-    }
     setIsLoading(true);
     try {
+      // This will now call the placeholder function from lib/auth.ts
       const user = await signInWithGoogle();
-      if (user) {
+      if (user) { // This block might not be reached if placeholder throws error
         toast({
           title: "Signed In Successfully!",
           description: `Welcome back, ${user.displayName || user.email}!`,
         });
-        router.push('/'); // Redirect to homepage or dashboard
+        router.push('/');
       }
     } catch (error: any) {
-      console.error("Google Sign-In Error:", error);
+      console.error("Google Sign-In Placeholder Error:", error);
       toast({
-        title: "Google Sign-In Failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
+        title: "Google Sign-In Not Implemented",
+        description: error.message || "This feature requires backend implementation.",
         variant: "destructive",
       });
     } finally {
@@ -87,18 +68,7 @@ export default function LoginPage() {
             <CardDescription>Log in to access your SyncStream rooms.</CardDescription>
           </CardHeader>
           <CardContent>
-            {!isFirebaseConfigured && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Firebase Configuration Error</AlertTitle>
-                <AlertDescription>
-                  Firebase is not properly configured. Authentication will not work.
-                  Please check your browser console for more details and ensure your
-                  <code>.env.local</code> file has the correct Firebase credentials.
-                  Remember to restart your development server after changes to <code>.env.local</code>.
-                </AlertDescription>
-              </Alert>
-            )}
+            {/* Firebase configuration alert removed */}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
@@ -109,7 +79,7 @@ export default function LoginPage() {
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                   required 
-                  disabled={isLoading || !isFirebaseConfigured}
+                  disabled={isLoading}
                   className="bg-input border-border focus:ring-primary"
                 />
               </div>
@@ -122,11 +92,11 @@ export default function LoginPage() {
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
                   required 
-                  disabled={isLoading || !isFirebaseConfigured}
+                  disabled={isLoading}
                   className="bg-input border-border focus:ring-primary"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading || !isFirebaseConfigured}>
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Logging in...' : 'Log In'}
               </Button>
             </form>
@@ -144,7 +114,7 @@ export default function LoginPage() {
               variant="outline" 
               className="w-full" 
               onClick={handleGoogleSignIn} 
-              disabled={isLoading || !isFirebaseConfigured}
+              disabled={isLoading}
             >
               <Chrome className="mr-2 h-4 w-4" />
               {isLoading ? 'Signing in...' : 'Sign in with Google'}
