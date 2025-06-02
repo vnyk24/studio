@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, Chrome } from 'lucide-react';
+import { UserPlus, Chrome, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { signUpWithGoogle } from '@/lib/auth'; // Updated import
+import { signUpWithGoogle } from '@/lib/auth';
+import { auth } from '@/lib/firebase'; // Import auth
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function SignupPage() {
   const [username, setUsername] = useState('');
@@ -22,8 +24,18 @@ export default function SignupPage() {
   const { toast } = useToast();
   const router = useRouter();
 
+  const isFirebaseConfigured = !!auth;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+     if (!isFirebaseConfigured) {
+      toast({
+        title: "Firebase Not Configured",
+        description: "Please configure Firebase in .env.local and restart the server.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsLoading(true);
     // Placeholder for email/password signup logic
      toast({
@@ -35,6 +47,14 @@ export default function SignupPage() {
   };
 
   const handleGoogleSignUp = async () => {
+    if (!isFirebaseConfigured) {
+      toast({
+        title: "Firebase Not Configured",
+        description: "Cannot sign up with Google. Please configure Firebase in .env.local and restart the server.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsLoading(true);
     try {
       const user = await signUpWithGoogle();
@@ -68,6 +88,18 @@ export default function SignupPage() {
             <CardDescription>Create an account to start watching with friends.</CardDescription>
           </CardHeader>
           <CardContent>
+            {!isFirebaseConfigured && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Firebase Configuration Error</AlertTitle>
+                <AlertDescription>
+                  Firebase is not properly configured. Authentication will not work.
+                  Please check your browser console for more details and ensure your
+                  <code>.env.local</code> file has the correct Firebase credentials.
+                  Remember to restart your development server after changes to <code>.env.local</code>.
+                </AlertDescription>
+              </Alert>
+            )}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-1.5">
                 <Label htmlFor="username">Username</Label>
@@ -78,7 +110,7 @@ export default function SignupPage() {
                   value={username} 
                   onChange={(e) => setUsername(e.target.value)} 
                   required 
-                  disabled={isLoading}
+                  disabled={isLoading || !isFirebaseConfigured}
                   className="bg-input border-border focus:ring-primary"
                 />
               </div>
@@ -91,7 +123,7 @@ export default function SignupPage() {
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                   required 
-                  disabled={isLoading}
+                  disabled={isLoading || !isFirebaseConfigured}
                   className="bg-input border-border focus:ring-primary"
                 />
               </div>
@@ -104,11 +136,11 @@ export default function SignupPage() {
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
                   required 
-                  disabled={isLoading}
+                  disabled={isLoading || !isFirebaseConfigured}
                   className="bg-input border-border focus:ring-primary"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || !isFirebaseConfigured}>
                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
@@ -122,7 +154,12 @@ export default function SignupPage() {
                 </span>
               </div>
             </div>
-            <Button variant="outline" className="w-full" onClick={handleGoogleSignUp} disabled={isLoading}>
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={handleGoogleSignUp} 
+              disabled={isLoading || !isFirebaseConfigured}
+            >
               <Chrome className="mr-2 h-4 w-4" />
               {isLoading ? 'Signing up...' : 'Sign up with Google'}
             </Button>
