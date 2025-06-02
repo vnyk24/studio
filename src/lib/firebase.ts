@@ -2,7 +2,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { Auth, getAuth, browserLocalPersistence, initializeAuth, indexedDBLocalPersistence, inMemoryPersistence } from 'firebase/auth';
 
-// It's good practice to explicitly type the config structure.
 interface FirebaseConfig {
   apiKey?: string;
   authDomain?: string;
@@ -26,76 +25,89 @@ let auth: Auth | null = null;
 
 const essentialVarsPresent = firebaseConfig.apiKey && firebaseConfig.projectId;
 
-if (essentialVarsPresent) {
+console.log("FirebaseConfig Check: API Key and Project ID are present?", essentialVarsPresent);
+if (!essentialVarsPresent) {
+  const missingVars: string[] = [];
+  if (!firebaseConfig.apiKey) missingVars.push("NEXT_PUBLIC_FIREBASE_API_KEY");
+  if (!firebaseConfig.projectId) missingVars.push("NEXT_PUBLIC_FIREBASE_PROJECT_ID");
+  console.warn(
+    `Firebase Initialization SKIPPED. Critical environment variable(s) missing: ${missingVars.join(', ')}. ` +
+    "Check .env.local and restart Next.js server. Firebase features WILL NOT WORK."
+  );
+} else {
+  console.log("Attempting Firebase app initialization with config:", firebaseConfig);
   if (!getApps().length) {
     try {
       app = initializeApp(firebaseConfig);
-    } catch (error) {
-      console.error("Firebase app initialization error:", error);
-      // If app initialization fails, we can't proceed to initialize auth
+      console.log("Firebase app initialized successfully with initializeApp().");
+    } catch (error: any) {
+      console.error("CRITICAL: Firebase app initialization FAILED directly with initializeApp(config). Error Code:", error.code, "Message:", error.message, "Config used:", firebaseConfig);
+      app = null; 
     }
   } else {
     app = getApp();
+    console.log("Firebase app obtained successfully with getApp().");
   }
 
   if (app) {
+    let authInitializedSuccessfully = false;
+    console.log("Firebase app object is valid, attempting Auth initialization.");
     if (typeof window !== 'undefined') {
-      // Client-side: use initializeAuth for persistence options
+      console.log("Client-side: Attempting initializeAuth...");
       try {
         auth = initializeAuth(app, {
           persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence]
         });
-      } catch (error) {
-        console.error("Firebase Auth (initializeAuth) client-side error:", error);
-        // Fallback to getAuth if initializeAuth has issues
+        authInitializedSuccessfully = true;
+        console.log("Firebase Auth initialized client-side via initializeAuth.");
+      } catch (error: any) {
+        console.error("Firebase Auth (initializeAuth) client-side error. Code:", error.code, "Message:", error.message);
+        // Fallback to getAuth if initializeAuth failed (e.g., unsupported environment)
+        console.log("Attempting client-side fallback to getAuth...");
         try {
             auth = getAuth(app);
-        } catch (getAuthError) {
-            console.error("Firebase Auth (getAuth fallback) client-side error:", getAuthError);
+            authInitializedSuccessfully = true;
+            console.log("Firebase Auth initialized client-side via getAuth (fallback).");
+        } catch (getAuthError: any) {
+            console.error("Firebase Auth (getAuth fallback) client-side error. Code:", getAuthError.code, "Message:", getAuthError.message);
+            auth = null; 
         }
       }
     } else {
-      // Server-side: use getAuth
+      console.log("Server-side: Attempting getAuth...");
       try {
         auth = getAuth(app);
-      } catch (error) {
-        console.error("Firebase Auth (getAuth) server-side error:", error);
+        authInitializedSuccessfully = true;
+        console.log("Firebase Auth initialized server-side via getAuth.");
+      } catch (error: any) {
+        console.error("Firebase Auth (getAuth) server-side error. Code:", error.code, "Message:", error.message);
+        auth = null;
       }
     }
-  }
-} else {
-  const missingVars: string[] = [];
-  if (!firebaseConfig.apiKey) missingVars.push("NEXT_PUBLIC_FIREBASE_API_KEY");
-  if (!firebaseConfig.projectId) missingVars.push("NEXT_PUBLIC_FIREBASE_PROJECT_ID");
 
-  if (missingVars.length > 0) {
-    console.warn(
-      `Firebase Initialization SKIPPED. The following critical environment variable(s) are missing: ${missingVars.join(', ')}. ` +
-      "Please ensure they are set in your .env.local file and the Next.js development server is restarted. " +
-      "Firebase features, including Authentication, will not work."
-    );
+    if (!authInitializedSuccessfully || !auth) {
+      console.error("CRITICAL: Firebase Auth object is NULL or authInitializedSuccessfully is FALSE after all attempts. Auth WILL NOT WORK.");
+      auth = null; // Ensure auth is null if something went critically wrong
+    } else {
+      console.log("Firebase Auth object appears to be successfully initialized.");
+    }
+  } else {
+    console.error("CRITICAL: Firebase app object is null (initializeApp likely failed). Firebase Auth cannot be initialized.");
+    auth = null; 
   }
 }
 
-// Final check and warnings after all initialization attempts
 if (!auth) {
   if (essentialVarsPresent) {
-    // This case is more serious: vars were there, but auth still failed.
     console.error(
-      "CRITICAL Firebase Auth Initialization Failure: The 'auth' object is null even though Firebase config variables " +
-      "(API Key, Project ID) appear to be present. This indicates a deeper issue with Firebase setup or SDK initialization. " +
-      "Authentication WILL NOT WORK. Please check: \n" +
-      "1. Your Firebase project settings in the Firebase console (is the project active? are the credentials correct?).\n" +
-      "2. Network connectivity to Firebase services from your environment.\n" +
-      "3. Any console errors logged above this message from the Firebase SDKs during initialization attempts.\n" +
-      "4. Ensure you've enabled necessary Sign-in providers (e.g., Google) in the Firebase Authentication console.\n" +
-      "5. Double-check that your .env.local file is correctly formatted and saved, and that you've RESTARTED your Next.js development server after any changes to it."
+      "CRITICAL Firebase Auth Initialization Failure: The 'auth' object is null DESPITE API Key & Project ID being present. " +
+      "This points to a deeper issue (e.g., incorrect values in .env.local, misconfigured Firebase project, network issues, or sign-in providers not enabled in Firebase console). " +
+      "Authentication WILL NOT WORK. Review console logs above this message from Firebase SDKs. Ensure .env.local is correct and server was restarted."
     );
   } else {
-    // This case means essential vars were missing from the start.
-    // The earlier warning already covered this, but an additional note here reinforces it.
+    // This case was already logged above, but reinforces it.
     console.warn(
-        "Firebase Auth is not initialized because essential configuration variables (API Key, Project ID) are missing. Authentication will not work."
+        "Firebase Auth is not initialized because essential configuration variables (API Key, Project ID) were missing from the start. Authentication will not work."
     );
   }
 }
